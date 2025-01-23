@@ -1,29 +1,70 @@
 package main
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
+	"time"
 
 	"github.com/crytoken/go-jwt"
 )
 
 func main() {
-	path := "/home/fedor/golang/go-jwt/keys/public.pem"
-	pubkey, err := jwt.LoadPubKeyFromPEM(path)
+
+	// Create ,valisate and sign new token
+	tokrn, err := jwt.New("es256")
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	token1 := "Bearer eyJhbGciOiJFUzI1NiIsInR5cGUiOiJKV1QifQ.eyJzdWIiOiJQaWZVZVduSGciLCJyb2xlIjoidXNlciIsImV4cCI6MTczNzA4MjI5MH0.8kYoQQLZKxO8_vMzbZDoTn8pOMhamHaXikmBd6nwyTVuh9JsbIfCvDCx1bjohdkhFGkiqyKY2mC4znEZg1Uv3w"
-	token2 := "Bearer eyJhbGciOiJFUzI1NiIsInR5cGUiOiJKV1QifQ.eyJzdWIiOiJQaWZVZVduSGciLCJyb2xlIjoidXNlciIsImV4cCI6MTczNzI1MzI0MH0.X2SOS1TNm_mZSBNKwSBr8u2MiIFJByglYn7B4WDRlhCnyhScMk6HnBDKfZiOKhekIfKcAEh8j2bTTvEPwqmQEA"
+	tokrn.Payload.Exp = uint64(time.Now().Add(10 * time.Minute).Unix())
+	tokrn.Payload.Sub = "jw1Afy6w"
+	tokrn.Payload.Iss = "auth.trusty.com"
 
-	_, err = jwt.ParseToken(token1, pubkey)
+	key, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	err = tokrn.Sign(key)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	tok, err := jwt.ParseToken(token2, pubkey)
+	fmt.Printf("token %+v\n", tokrn.String())
+
+	t3, err := jwt.ParseString(tokrn.BearerString())
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Printf("tojen %+v\n", tok)
+	err = t3.VerifySignature(&key.PublicKey)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Verified")
+
+	//New token ,signed by RSA
+	rsaKey, _ := rsa.GenerateKey(rand.Reader, 2048)
+	token2, _ := jwt.New("rs256")
+	token2.Payload.Exp = uint64(time.Now().Add(12 * time.Minute).Unix())
+	token2.Payload.Sub = "crytoken"
+
+	err = token2.Sign(rsaKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	//Display token
+	fmt.Println(token2.BearerString())
+
+	//
+	parsedToken, err := jwt.ParseString(token2.BearerString())
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	err = parsedToken.VerifySignature(&rsaKey.PublicKey)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	fmt.Println("Signatire valid")
 }

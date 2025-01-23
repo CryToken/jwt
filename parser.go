@@ -1,17 +1,15 @@
 package jwt
 
 import (
-	"crypto/ecdsa"
-	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/big"
 	"strings"
 )
 
-func ParseToken(token string, pubKey *ecdsa.PublicKey) (*Token, error) {
+func ParseString(token string) (*Token, error) {
 	var resultToken Token
+
 	authHeader := strings.Split(token, " ")
 	if len(authHeader) != 2 && authHeader[0] != "Bearer" {
 		msg := fmt.Sprintf("invalid auth header: %s", token)
@@ -47,30 +45,26 @@ func ParseToken(token string, pubKey *ecdsa.PublicKey) (*Token, error) {
 		msg := "failed to unmarshal payload"
 		return nil, errors.New(msg)
 	}
-	isExpired := resultToken.Payload.IsExpired()
-	if isExpired {
-		msg := "token expired"
-		return nil, errors.New(msg)
-	}
 
-	//Decode and verify signatire
-	signatureBytes, err := Base64UrlDecode(tokenParts[2])
-	if err != nil {
-		msg := "failed decoding signature"
-		return nil, errors.New(msg)
-	}
-
-	dataToVerify := tokenParts[0] + "." + tokenParts[1]
-	dataToVerifyHash := sha256.Sum256([]byte(dataToVerify))
-
-	r := new(big.Int).SetBytes(signatureBytes[:len(signatureBytes)/2])
-	s := new(big.Int).SetBytes(signatureBytes[len(signatureBytes)/2:])
-
-	if !ecdsa.Verify(pubKey, dataToVerifyHash[:], r, s) {
-		msg := "signature not valid"
-		return nil, errors.New(msg)
-	}
 	resultToken.Signature = tokenParts[2]
 	return &resultToken, nil
 
+}
+
+func (token *Token) Validate(key interface{}) error {
+	if token.Payload.IsExpired() {
+		msg := "not valid expiration value"
+		return errors.New(msg)
+	}
+	if token.Signature == "" {
+		msg := "no signature"
+		return errors.New(msg)
+	}
+
+	err := token.VerifySignature(key)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
