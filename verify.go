@@ -28,6 +28,14 @@ func (token *Token) VerifySignature(key interface{}) error {
 		}
 		return token.verifyRSA(rsaKey)
 
+	case "HS256":
+		hmacKey, ok := key.([]byte)
+		if !ok {
+			msg := "for hs256 key should be []byte"
+			return errors.New(msg)
+		}
+		return token.verifyHMAC(hmacKey)
+
 	default:
 		msg := "unknown algorithm"
 		return errors.New(msg)
@@ -68,6 +76,22 @@ func (token *Token) verifyRSA(pubkey *rsa.PublicKey) error {
 	err = rsa.VerifyPKCS1v15(pubkey, crypto.SHA256, dataHash[:], signatureBytes)
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func (token *Token) verifyHMAC(key []byte) error {
+	tokenStr := token.String()
+	parts := strings.Split(tokenStr, ".")
+
+	dataToVerify := parts[0] + "." + parts[1]
+	expectedSignature, err := signHS256(dataToVerify, key)
+	if err != nil {
+		return err
+	}
+	if expectedSignature != token.Signature {
+		msg := "not equal signature"
+		return errors.New(msg)
 	}
 	return nil
 }

@@ -3,6 +3,7 @@ package jwt
 import (
 	"crypto"
 	"crypto/ecdsa"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -39,6 +40,19 @@ func (token *Token) Sign(key interface{}) error {
 			return err
 		}
 		return nil
+
+	case "HS256":
+		var err error
+		hmacKey, ok := key.([]byte)
+		if !ok {
+			msg := "not valid hmac secret key"
+			return errors.New(msg)
+		}
+		token.Signature, err = signHS256(dataToSign, hmacKey)
+		if err != nil {
+			return err
+		}
+		return nil
 	}
 
 	return nil
@@ -68,4 +82,10 @@ func signRSA(data string, key *rsa.PrivateKey) (string, error) {
 		return "", err
 	}
 	return base64UrlEncode(signature), nil
+}
+
+func signHS256(data string, key []byte) (string, error) {
+	hash := hmac.New(sha256.New, key)
+	hash.Write([]byte(data))
+	return base64UrlEncode(hash.Sum(nil)), nil
 }

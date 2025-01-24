@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-func LoadPubKeyFromPEM(path string) (*ecdsa.PublicKey, error) {
+func LoadECDSAPubKeY(path string) (*ecdsa.PublicKey, error) {
 	//Read the public key file
 	pubKeyBytes, err := os.ReadFile(path)
 	if err != nil {
