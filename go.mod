@@ -1,3 +1,3 @@
-module github.com/crytoken/go-jwt
+module github.com/crytoken/jwt
 
 go 1.23.4
