@@ -50,21 +50,3 @@ func ParseString(token string) (*Token, error) {
 	return &resultToken, nil
 
 }
-
-func (token *Token) Validate(key interface{}) error {
-	if token.Payload.IsExpired() {
-		msg := "not valid expiration value"
-		return errors.New(msg)
-	}
-	if token.Signature == "" {
-		msg := "no signature"
-		return errors.New(msg)
-	}
-
-	err := token.VerifySignature(key)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}

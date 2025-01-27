@@ -1,76 +1,47 @@
 package jwt
 
 import (
-	"crypto/ecdsa"
-	"crypto/rsa"
-	"crypto/x509"
 	"encoding/json"
-	"encoding/pem"
 	"errors"
-	"fmt"
-	"os"
+	"strings"
 )
 
-func LoadECDSAPubKeY(path string) (*ecdsa.PublicKey, error) {
-	//Read the public key file
-	pubKeyBytes, err := os.ReadFile(path)
-	if err != nil {
-		msg := fmt.Sprintf("err to Read file %s", path)
-		return nil, errors.New(msg)
-	}
-
-	//Decode it to the PEM Blocks
-	block, _ := pem.Decode(pubKeyBytes)
-	if block == nil || block.Type != "PUBLIC KEY" {
-		msg := "error decoding public key"
-		return nil, errors.New(msg)
-	}
-
-	//Parsing public key
-	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		msg := "failed parsing public key"
-		return nil, errors.New(msg)
-	}
-
-	// Use type assertion to justify this is a ecdsa.PublicKey
-	var ok bool
-	ecdsaPubKey, ok := pubKey.(*ecdsa.PublicKey)
-	if !ok {
-		msg := "tye error: not a ECDSA Public key type"
-		return nil, errors.New(msg)
-	}
-
-	return ecdsaPubKey, nil
+// Token represents a JWT with its Header, Payload, and Signature.
+type Token struct {
+	Header    Header
+	Payload   Payload
+	Signature string
 }
 
-func LoadRSApublicKey(path string) (*rsa.PublicKey, error) {
-	publicKeyBytes, err := os.ReadFile(path)
-	if err != nil {
-		msg := "failed to read rsa oublic key file"
-		return nil, errors.New(msg)
-	}
+// Header represents the JWT header.
+type Header struct {
+	Algorithm string `json:"alg,omitempty"` // Algorithm used to sign the token
+	Type      string `json:"typ,omitempty"` // Type of token, typically "JWT"
+}
 
-	block, _ := pem.Decode(publicKeyBytes)
-	if block == nil || block.Type != "PUBLIC KEY" {
-		msg := "error decoding public key"
-		return nil, errors.New(msg)
-	}
+// Payload represents the JWT payload (claims).
+// Fields use zero values to handle optionality gracefully.
+type Payload struct {
+	Exp uint64 `json:"exp,omitempty"` // Expiration time (Unix timestamp)
+	Iss string `json:"iss,omitempty"` // Issuer of the token
+	Sub string `json:"sub,omitempty"` // Subject of the token
+	Aud string `json:"aud,omitempty"` // Audience for the token
+	Iat uint64 `json:"iat,omitempty"` // Issued at (Unix timestamp)
+	Nbf uint64 `json:"nbf,omitempty"` // Not before (Unix timestamp)
+}
 
-	//Parsing public key
-	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		msg := "failed parsing public key"
+func New(algo string) (*Token, error) {
+	algo = strings.ToUpper(algo)
+	if !isAvailableAlgorithm(algo) {
+		msg := "not available algorithm"
 		return nil, errors.New(msg)
 	}
+	var token Token
+	const tokenType = "JWT"
+	token.Header.Algorithm = algo
+	token.Header.Type = tokenType
 
-	// Type assertion
-	rsaPublicKey, ok := pubKey.(*rsa.PublicKey)
-	if !ok {
-		msg := "inbalid key type"
-		return nil, errors.New(msg)
-	}
-	return rsaPublicKey, nil
+	return &token, nil
 }
 
 func (token *Token) String() string {
