@@ -13,20 +13,30 @@ import (
 func (token *Token) VerifySignature(key interface{}) error {
 	switch token.Header.Algorithm {
 	case "ES256":
-		ecdsaKey, ok := key.(*ecdsa.PublicKey)
+		ecdsaKey, ok := key.(ecdsa.PublicKey)
+		if ok {
+			return token.verifyECDSA(&ecdsaKey)
+		}
+
+		ecdsaKeyP, ok := key.(*ecdsa.PublicKey)
 		if !ok {
 			msg := "not valid key"
 			return errors.New(msg)
 		}
-		return token.verifyECDSA(ecdsaKey)
+		return token.verifyECDSA(ecdsaKeyP)
 
 	case "RS256":
-		rsaKey, ok := key.(*rsa.PublicKey)
+		rsaKey, ok := key.(rsa.PublicKey)
+		if ok {
+			return token.verifyRSA(&rsaKey)
+		}
+
+		rsaKeyP, ok := key.(*rsa.PublicKey)
 		if !ok {
 			msg := "not valid key"
 			return errors.New(msg)
 		}
-		return token.verifyRSA(rsaKey)
+		return token.verifyRSA(rsaKeyP)
 
 	case "HS256":
 		hmacKey, ok := key.([]byte)
